@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pick-ltl"
+version = "0.1.0"
+description = "Local PICK-style LTL builder using one LLM seed plus misconception mutation."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "Flask>=3.0.0",
+  "antlr4-python3-runtime>=4.13.0,<4.14",
+  "requests>=2.31.0",
+  "python-dotenv>=1.0.0",
+  "inflect>=7.0.0",
+  "wordfreq>=3.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
