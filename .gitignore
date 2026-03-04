@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+node_modules/
+playwright-report/
+test-results/

@@ -40,7 +40,16 @@ pip install -e ".[dev]"
 
 If `conda` is not already available on your machine, install Miniforge or Conda first.
 
-### 4. Start the web app
+### 4. Install frontend test dependencies
+
+If you want to run the browser tests:
+
+```bash
+npm install
+npx playwright install chromium
+```
+
+### 5. Start the web app
 
 ```bash
 ./scripts/run.sh
@@ -48,7 +57,7 @@ If `conda` is not already available on your machine, install Miniforge or Conda 
 
 Then open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
-### 5. Connect your local model
+### 6. Connect your local model
 
 When the app opens:
 
@@ -58,7 +67,7 @@ When the app opens:
 4. Click `Test Connection`.
 5. Click `Save Settings`.
 
-### 6. Generate your first formula
+### 7. Generate your first formula
 
 Once settings are saved:
 
@@ -108,16 +117,17 @@ For the simplest local path with Ollama:
 2. Activate it: `conda activate pick-ltl`
 3. Install Spot: `conda install -c conda-forge spot`
 4. Install the repo: `pip install -e ".[dev]"`
-5. Start Ollama and make sure your model is available.
-6. Run `./scripts/run.sh`.
-7. Open the app in the browser.
-8. Open `Settings`.
-9. Set provider to `Ollama`.
-10. Leave the base URL as `http://localhost:11434` unless your Ollama server is elsewhere.
-11. Enter your model name.
-12. Click `Test Connection`.
-13. Click `Save Settings`.
-14. Enter a prompt and click `Generate`.
+5. Install frontend test deps if needed: `npm install`
+6. Start Ollama and make sure your model is available.
+7. Run `./scripts/run.sh`.
+8. Open the app in the browser.
+9. Open `Settings`.
+10. Set provider to `Ollama`.
+11. Leave the base URL as `http://localhost:11434` unless your Ollama server is elsewhere.
+12. Enter your model name.
+13. Click `Test Connection`.
+14. Click `Save Settings`.
+15. Enter a prompt and click `Generate`.
 
 ## Troubleshooting
 
@@ -138,6 +148,34 @@ For the simplest local path with Ollama:
 - The provider may be returning non-JSON output or an unexpected response shape.
 - Try a different local model if the current one does not follow structured output reliably.
 - If you are using a local OpenAI-compatible server, confirm it supports chat-completions style requests.
+
+### Playwright cannot start the app
+
+- Make sure you are running `npm run test:e2e` from an activated `pick-ltl` Conda environment.
+- If Playwright is picking the wrong Python, run it like this:
+
+```bash
+PICK_LTL_PYTHON=$(which python) npm run test:e2e
+```
+
+- If Chromium is missing, run `npx playwright install chromium`.
+
+## Frontend Tests
+
+The browser tests use Playwright and mock the `/api/*` responses, so they exercise the actual UI without needing a live LLM or live Spot calls.
+
+Run them with:
+
+```bash
+npm run test:e2e
+```
+
+Useful variants:
+
+```bash
+npm run test:e2e:headed
+npm run test:e2e:ui
+```
 
 ## Notes
 
