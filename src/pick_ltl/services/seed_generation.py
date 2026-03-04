@@ -12,6 +12,7 @@ from ..session.models import AtomSpec, SeedFormulaResult
 ATOM_RE = re.compile(r"^[a-z0-9]+$")
 FORMULA_PREFIX_RE = re.compile(r"^(?:ltl|formula)\s*:\s*", re.IGNORECASE)
 FORMULA_TOKEN_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
+ESCAPED_OPERATOR_RE = re.compile(r"\\+(X|AFTER|NEXT_STATE|F|EVENTUALLY|G|ALWAYS|U|UNTIL)\b", re.IGNORECASE)
 UNICODE_REPLACEMENTS = {
     "¬": "!",
     "∧": "&",
@@ -38,6 +39,10 @@ Rules:
 - Use only short proposition names.
 - Use ASCII LTL syntax, not LaTeX.
 - Use lowercase proposition names like r, b, p1.
+- Do not use backslashes anywhere in the formula.
+- Do not escape operators or parentheses.
+- Valid example formula: G(r -> F(b))
+- Invalid example formulas: \\G (r \\U b), \\(G(r)\\), $G(r)$
 - Do not return alternatives.
 - No Markdown fences.
 """
@@ -59,9 +64,11 @@ def _normalize_formula_token(match: re.Match[str]) -> str:
 def _sanitize_formula(formula: str) -> str:
     normalized = str(formula).strip()
     normalized = normalized.strip("`$")
+    normalized = normalized.replace("\\\\", "\\")
     normalized = normalized.replace("\\(", "(").replace("\\)", ")")
     normalized = normalized.replace("\\[", "(").replace("\\]", ")")
     normalized = normalized.replace("\\{", "(").replace("\\}", ")")
+    normalized = ESCAPED_OPERATOR_RE.sub(lambda match: match.group(1).upper(), normalized)
     for source, target in UNICODE_REPLACEMENTS.items():
         normalized = normalized.replace(source, target)
     if normalized.startswith("```") and normalized.endswith("```"):
@@ -109,7 +116,7 @@ def generate_seed_formula(prompt: str, provider_payload: dict) -> SeedFormulaRes
     except LTLParseError as exc:
         raise ProviderError(
             "Model returned an invalid LTL formula. "
-            "Try a more instruction-following model or revise the prompt. "
+            "Try a more instruction-following model, revise the prompt, or use a model that follows structured output more reliably. "
             f"Received: {formula!r}"
         ) from exc
     explanation = str(payload.get("explanation", "")).strip() or "Seed formula proposed by the language model."

@@ -43,6 +43,22 @@ def test_generate_seed_formula_normalizes_common_local_model_syntax(monkeypatch)
     assert [atom.name for atom in seed.atoms] == ["p", "q"]
 
 
+def test_generate_seed_formula_normalizes_escaped_operators(monkeypatch):
+    fake = FakeLLMProvider(
+        {
+            "formula": r"\G (r \U p)",
+            "explanation": "seed explanation",
+            "atoms": [{"name": "r", "meaning": "red is on"}, {"name": "p", "meaning": "pressure is on"}],
+            "warnings": [],
+        }
+    )
+    monkeypatch.setattr("pick_ltl.services.seed_generation.build_provider", lambda payload: fake)
+
+    seed = generate_seed_formula("always r until p", {"kind": "ollama"})
+
+    assert seed.formula == "(G (r U p))"
+
+
 def test_parse_ltl_string_raises_clean_error_for_invalid_formula():
     with pytest.raises(LTLParseError):
         parse_ltl_string(r"\(P R U\)")
