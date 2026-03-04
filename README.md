@@ -11,27 +11,36 @@ PICK LTL is a local Python web app for building Linear Temporal Logic formulas w
 
 If you just want to try the app locally, do these steps in order.
 
-### 1. Install Python dependencies
+### 1. Create and activate a Conda environment
 
 From pick-ltl:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+conda create -n pick-ltl python=3.12
+conda activate pick-ltl
 ```
+
+Python 3.12 is the recommended default because it works well with current `conda-forge` builds of `spot`.
 
 ### 2. Install `spot`
 
-`spot` is required for LTL equivalence checks and trace generation. It is not installed from PyPI here.
+`spot` is required for LTL equivalence checks and trace generation.
 
 ```bash
 conda install -c conda-forge spot
 ```
 
+### 3. Install Python dependencies
+
+With `pick-ltl` activated:
+
+```bash
+pip install -e ".[dev]"
+```
+
 If `conda` is not already available on your machine, install Miniforge or Conda first.
 
-### 3. Start the web app
+### 4. Start the web app
 
 ```bash
 ./scripts/run.sh
@@ -39,7 +48,7 @@ If `conda` is not already available on your machine, install Miniforge or Conda 
 
 Then open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
-### 4. Connect your local model
+### 5. Connect your local model
 
 When the app opens:
 
@@ -49,7 +58,7 @@ When the app opens:
 4. Click `Test Connection`.
 5. Click `Save Settings`.
 
-### 5. Generate your first formula
+### 6. Generate your first formula
 
 Once settings are saved:
 
@@ -95,22 +104,26 @@ If your local Llama model is running behind an OpenAI-compatible server instead,
 
 For the simplest local path with Ollama:
 
-1. Start Ollama and make sure your model is available.
-2. Run `./scripts/run.sh`.
-3. Open the app in the browser.
-4. Open `Settings`.
-5. Set provider to `Ollama`.
-6. Leave the base URL as `http://localhost:11434` unless your Ollama server is elsewhere.
-7. Enter your model name.
-8. Click `Test Connection`.
-9. Click `Save Settings`.
-10. Enter a prompt and click `Generate`.
+1. Create the environment: `conda create -n pick-ltl python=3.12`
+2. Activate it: `conda activate pick-ltl`
+3. Install Spot: `conda install -c conda-forge spot`
+4. Install the repo: `pip install -e ".[dev]"`
+5. Start Ollama and make sure your model is available.
+6. Run `./scripts/run.sh`.
+7. Open the app in the browser.
+8. Open `Settings`.
+9. Set provider to `Ollama`.
+10. Leave the base URL as `http://localhost:11434` unless your Ollama server is elsewhere.
+11. Enter your model name.
+12. Click `Test Connection`.
+13. Click `Save Settings`.
+14. Enter a prompt and click `Generate`.
 
 ## Troubleshooting
 
 ### The app will not start
 
-- Make sure you activated the virtual environment with `source .venv/bin/activate`.
+- Make sure you activated the Conda environment with `conda activate pick-ltl`.
 - Make sure `pip install -e ".[dev]"` completed successfully.
 - Make sure `spot` is installed in the environment you are using.
 
