@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: pick-ltl-ci
+          auto-activate-base: false
+          channels: conda-forge
+          channel-priority: strict
+          python-version: "3.12"
+
+      - name: Install Spot
+        run: conda install -y spot
+
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Python tests
+        run: pytest -q
+
+      - name: Run Playwright tests
+        run: PICK_LTL_PYTHON="$(which python)" npm run test:e2e
