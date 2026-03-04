@@ -1,0 +1,24 @@
+services:
+  pick-ltl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      PICK_LTL_CONFIG_DIR: /config
+    volumes:
+      - ./docker/pick-ltl-config:/config
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  ollama-data:
+

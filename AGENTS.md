@@ -18,6 +18,8 @@
 - Run the app: `./scripts/run.sh`
 - Run tests: `pytest -q`
 - Run frontend tests: `npm run test:e2e`
+- Run the Docker stack: `docker compose up --build`
+- Pull the default Ollama model in Docker: `docker compose exec ollama ollama pull llama3.2:latest`
 
 ## Important Product Constraints
 

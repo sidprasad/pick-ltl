@@ -1,0 +1,7 @@
+{
+  "kind": "ollama",
+  "base_url": "http://ollama:11434",
+  "model": "llama3.2:latest",
+  "api_key": "",
+  "timeout_seconds": 60
+}
