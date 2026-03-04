@@ -220,12 +220,4 @@ def getFormulaLiterals(ltlFormula):
             raise TypeError(f"Unknown node type: {type(n)}")
     
     getLiterals(n)
-
-
-    ## HACK FOR LTL STUDY
-
-    ## First check if 'r', 'g', or 'b' are in literals
-    rgb = {'r', 'g', 'b'}
-   
-    return literals | rgb
-    ### END HACK FOR LTL STUDY
+    return literals
