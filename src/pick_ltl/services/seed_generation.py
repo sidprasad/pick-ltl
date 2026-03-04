@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 
 from ..llm.base import ProviderError
@@ -74,6 +75,36 @@ Invalid formula examples:
 """
 
 
+SEED_REPAIR_SYSTEM_PROMPT = """You repair malformed LTL model output.
+Given an original natural-language requirement and a previous malformed result, extract or repair exactly one plausible LTL formula and return only one JSON object.
+
+Return ONLY a single JSON object with this shape:
+{
+  "formula": "<LTL_FORMULA>",
+  "explanation": "<SHORT_EXPLANATION>",
+  "atoms": [
+    {"name": "<atom>", "meaning": "<what it means>"}
+  ],
+  "warnings": ["<optional warning 1>", "<optional warning 2>"]
+}
+
+Output rules:
+- Output must be valid JSON. No backticks, comments, or extra text.
+- Return exactly one repaired formula, not alternatives.
+- Preserve the intended meaning of the original requirement when possible.
+- If the previous result already suggests a formula, repair/extract it rather than inventing a completely different interpretation.
+
+LTL syntax rules:
+- Use ASCII LTL only.
+- Unary operators: G, F, X, !
+- Binary operators: U, &, |, ->
+- Grouping: parentheses ()
+- Proposition names must be lowercase letters/digits only, like r, b, p1, req, grant
+- Do not use backslashes anywhere in the formula.
+- Do not use LaTeX syntax.
+"""
+
+
 def _normalize_atom_name(name: str) -> str:
     normalized = re.sub(r"[^a-z0-9]", "", name.lower())
     return normalized
@@ -126,6 +157,35 @@ def _normalize_atoms(formula: str, raw_atoms: list[dict]) -> list[AtomSpec]:
     return atoms
 
 
+def _parse_formula_or_raise(formula: str) -> str:
+    normalized_formula = _sanitize_formula(formula)
+    return str(parse_ltl_string(normalized_formula))
+
+
+def _repair_seed_payload(provider, prompt: str, payload: dict, malformed_formula: str) -> dict:
+    repair_payload = provider.complete_json(
+        SEED_REPAIR_SYSTEM_PROMPT,
+        "\n".join(
+            [
+                f"Original requirement:\n{prompt.strip()}",
+                "",
+                f"Malformed formula:\n{malformed_formula}",
+                "",
+                "Previous JSON object:",
+                json.dumps(payload, ensure_ascii=True),
+            ]
+        ),
+    )
+    repaired_warnings = repair_payload.get("warnings", [])
+    if isinstance(repaired_warnings, list):
+        repair_payload["warnings"] = [
+            str(item).strip() for item in repaired_warnings if str(item).strip()
+        ] + ["Initial model output required formula repair."]
+    else:
+        repair_payload["warnings"] = ["Initial model output required formula repair."]
+    return repair_payload
+
+
 def generate_seed_formula(prompt: str, provider_payload: dict) -> SeedFormulaResult:
     if not prompt.strip():
         raise ValueError("Prompt cannot be empty.")
@@ -136,15 +196,21 @@ def generate_seed_formula(prompt: str, provider_payload: dict) -> SeedFormulaRes
     if not formula:
         raise ProviderError("Model did not return a formula.")
 
-    normalized_formula = _sanitize_formula(formula)
     try:
-        formula = str(parse_ltl_string(normalized_formula))
+        formula = _parse_formula_or_raise(formula)
     except LTLParseError as exc:
-        raise ProviderError(
-            "Model returned an invalid LTL formula. "
-            "Try a more instruction-following model, revise the prompt, or use a model that follows structured output more reliably. "
-            f"Received: {formula!r}"
-        ) from exc
+        try:
+            payload = _repair_seed_payload(provider, prompt, payload, formula)
+            repaired_formula = str(payload.get("formula", "")).strip()
+            if not repaired_formula:
+                raise ProviderError("Model repair pass did not return a formula.")
+            formula = _parse_formula_or_raise(repaired_formula)
+        except (ProviderError, LTLParseError) as repair_exc:
+            raise ProviderError(
+                "Model returned an invalid LTL formula and the repair pass did not recover it. "
+                "Try a more instruction-following model, revise the prompt, or use a model that follows structured output more reliably. "
+                f"Received: {formula!r}"
+            ) from repair_exc
     explanation = str(payload.get("explanation", "")).strip() or "Seed formula proposed by the language model."
     atoms = _normalize_atoms(formula, payload.get("atoms", []))
     warnings = [str(item).strip() for item in payload.get("warnings", []) if str(item).strip()]

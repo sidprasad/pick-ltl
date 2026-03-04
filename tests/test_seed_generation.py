@@ -77,3 +77,35 @@ def test_generate_seed_formula_returns_provider_error_for_invalid_formula(monkey
 
     with pytest.raises(ProviderError):
         generate_seed_formula("broken formula", {"kind": "ollama"})
+
+
+def test_generate_seed_formula_repairs_malformed_formula_with_second_query(monkeypatch):
+    fake = FakeLLMProvider(
+        [
+            {
+                "formula": r"\(P R U\)",
+                "explanation": "bad seed explanation",
+                "atoms": [{"name": "P", "meaning": "pressure is on"}],
+                "warnings": [],
+            },
+            {
+                "formula": "G(p -> F(q))",
+                "explanation": "repaired explanation",
+                "atoms": [
+                    {"name": "p", "meaning": "pressure is on"},
+                    {"name": "q", "meaning": "quality signal is on"},
+                ],
+                "warnings": ["repaired from malformed output"],
+            },
+        ]
+    )
+    monkeypatch.setattr("pick_ltl.services.seed_generation.build_provider", lambda payload: fake)
+
+    seed = generate_seed_formula("when pressure then eventually quality", {"kind": "ollama"})
+
+    assert seed.formula == "(G (p -> (F q)))"
+    assert seed.explanation == "repaired explanation"
+    assert [atom.name for atom in seed.atoms] == ["p", "q"]
+    assert "Initial model output required formula repair." in seed.warnings
+    assert len(fake.calls) == 2
+    assert "Malformed formula:" in fake.calls[1]["user_prompt"]

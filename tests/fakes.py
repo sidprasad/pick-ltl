@@ -15,5 +15,13 @@ class FakeLLMProvider(LLMProvider):
 
     def complete_json(self, system_prompt: str, user_prompt: str) -> dict:
         self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
+        if isinstance(self.payload, list):
+            if not self.payload:
+                raise AssertionError("FakeLLMProvider ran out of payloads.")
+            next_payload = self.payload.pop(0)
+            if callable(next_payload):
+                return next_payload(system_prompt, user_prompt)
+            return next_payload
+        if callable(self.payload):
+            return self.payload(system_prompt, user_prompt)
         return self.payload
-
