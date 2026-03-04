@@ -229,8 +229,67 @@ button:disabled {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.history-item {
+  display: grid;
+  gap: 12px;
+}
+
+.history-item-head,
+.history-item-meta,
+.history-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.history-item-head {
+  justify-content: space-between;
+}
+
+.history-item-index {
+  color: var(--muted);
+  font: 600 0.78rem/1.2 "Avenir Next", "Helvetica Neue", sans-serif;
+}
+
+.history-trace .trace-box,
+.history-trace .trace-flow {
+  min-height: auto;
+}
+
+.history-actions {
+  justify-content: flex-start;
+}
+
+.history-vote {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+}
+
+.history-vote.active {
+  box-shadow: inset 0 0 0 2px rgba(26, 31, 29, 0.15);
+}
+
 .candidate-item.eliminated {
   opacity: 0.56;
+}
+
+.candidate-notes,
+.result-notes {
+  margin-top: 10px;
+}
+
+.candidate-notes summary,
+.result-notes summary {
+  cursor: pointer;
+  color: var(--accent);
+  font: 600 0.9rem/1.3 "Avenir Next", "Helvetica Neue", sans-serif;
+}
+
+.candidate-notes[open],
+.result-notes[open] {
+  border-top: 1px solid rgba(14, 79, 69, 0.12);
+  padding-top: 10px;
 }
 
 .candidate-formula,
@@ -307,34 +366,47 @@ button:disabled {
   padding: 12px;
 }
 
-.trace-flow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.trace-render-surface {
+  min-height: 84px;
 }
 
-.trace-state,
-.trace-cycle-label,
-.trace-arrow {
-  font-family: "Avenir Next", "Helvetica Neue", sans-serif;
-}
-
-.trace-state {
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: rgba(14, 79, 69, 0.08);
-  border: 1px solid rgba(14, 79, 69, 0.18);
-  font-weight: 600;
-}
-
-.trace-cycle-label {
-  color: var(--warn);
-  font-size: 0.82rem;
-}
-
-.trace-arrow {
+.trace-fallback {
   color: var(--muted);
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.trace-box .mermaid-trace,
+.history-trace .mermaid-trace,
+.example-item .mermaid-trace {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.trace-box .mermaid-trace:hover,
+.history-trace .mermaid-trace:hover,
+.example-item .mermaid-trace:hover {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+
+.trace-box .mermaid,
+.history-trace .mermaid,
+.example-item .mermaid {
+  overflow-x: auto;
+}
+
+.trace-box .mermaid svg,
+.history-trace .mermaid svg,
+.example-item .mermaid svg {
+  max-width: 100%;
+  height: auto;
 }
 
 .modal {
@@ -366,4 +438,3 @@ button:disabled {
     position: static;
   }
 }
-

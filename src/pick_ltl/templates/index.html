@@ -93,7 +93,8 @@
               </div>
 
               <div class="manual-panel">
-                <h3>History</h3>
+                <h3>Classification History</h3>
+                <p>All past trace judgments live here. You can change any one and the session will be recalculated.</p>
                 <div id="historyList" class="history-list empty">No classifications yet.</div>
               </div>
             </div>
@@ -125,8 +126,8 @@
         <aside class="panel panel-side">
           <div class="panel-head tight">
             <div>
-              <h2>Candidates</h2>
-              <p>Seed plus semantic and syntactic variants.</p>
+              <h2>Candidate Formulas</h2>
+              <p>Compare the remaining formulas and the evidence against them.</p>
             </div>
           </div>
           <div id="candidateList" class="candidate-list empty">No candidates yet.</div>
@@ -181,4 +182,3 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
   </html>
-

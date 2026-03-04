@@ -59,3 +59,29 @@ def test_seed_route_returns_400_for_invalid_model_formula(monkeypatch):
 
     assert response.status_code == 400
     assert "invalid LTL formula" in response.get_json()["error"]
+
+
+def test_reclassify_route_returns_updated_session(monkeypatch):
+    monkeypatch.setattr(
+        "pick_ltl.api.routes.reclassify_trace",
+        lambda session, history_index, classification: SessionState(
+            prompt=session.prompt,
+            provider=session.provider,
+            mode="voting",
+            message=f"{history_index}:{classification}",
+        ),
+    )
+
+    app = create_app()
+    client = app.test_client()
+    response = client.post(
+        "/api/session/reclassify",
+        json={
+            "session": {"prompt": "always r", "provider": {"kind": "ollama"}, "history": []},
+            "history_index": 0,
+            "classification": "accept",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["message"] == "0:accept"

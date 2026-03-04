@@ -12,7 +12,7 @@ from ..llm.manager import build_provider
 from ..ltl.ltlnode import LTLParseError
 from ..services.candidate_builder import create_initial_session
 from ..services.seed_generation import generate_seed_formula
-from ..session.engine import add_manual_examples, finalize_session, next_pair, classify_trace, refine_session
+from ..session.engine import add_manual_examples, finalize_session, next_pair, classify_trace, refine_session, reclassify_trace
 from ..session.storage import normalize_session_payload
 
 
@@ -94,6 +94,15 @@ def api_classify():
     classification = str(payload.get("classification", "")).strip()
     source = str(payload.get("source", "pair"))
     return jsonify(classify_trace(session, trace, classification, source=source).to_dict())
+
+
+@bp.route("/api/session/reclassify", methods=["POST"])
+def api_reclassify():
+    payload = require_json()
+    session = normalize_session_payload(payload.get("session", {}))
+    history_index = int(payload.get("history_index", -1))
+    classification = str(payload.get("classification", "")).strip()
+    return jsonify(reclassify_trace(session, history_index, classification).to_dict())
 
 
 @bp.route("/api/session/refine", methods=["POST"])

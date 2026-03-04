@@ -12,6 +12,7 @@
 class TraceRenderer {
     constructor() {
         this.stateIdCounter = 0;
+        this.mermaidReady = null;
     }
 
     /**
@@ -297,12 +298,11 @@ ${enlargedMermaidCode}
      * @param {Object} options - Rendering options
      */
     renderAllTraces(options = {}) {
-        // Ensure Mermaid is loaded
-        this.ensureMermaidLoaded();
+        return this.ensureMermaidLoaded()
+            .then(() => {
+                const traceElements = document.querySelectorAll('.ltl-spot-trace');
 
-        const traceElements = document.querySelectorAll('.ltl-spot-trace');
-        
-        traceElements.forEach(element => {
+                traceElements.forEach(element => {
             // Get the original trace from data-word
             let traceText = element.getAttribute('data-word');
             
@@ -339,10 +339,6 @@ ${enlargedMermaidCode}
             element.setAttribute('data-original', traceText);  // Original SPOT trace
             element.setAttribute('data-mermaid', mermaidCode);  // Generated Mermaid code
             
-            // Log for debugging
-            console.log('Original Trace (data-original):', traceText);
-            console.log('Generated Mermaid (data-mermaid):', mermaidCode);
-            
             element.innerHTML = rendered;
             element.classList.add('ltl-trace-rendered');
             
@@ -351,32 +347,54 @@ ${enlargedMermaidCode}
                 this.showMagnifiedTrace(mermaidCode, traceText);
             });
             
-            // Force Mermaid to render the new diagram
-            setTimeout(() => {
-                if (typeof mermaid !== 'undefined') {
-                    const mermaidPre = element.querySelector('.mermaid');
-                    if (mermaidPre) {
-                        mermaid.init(undefined, mermaidPre);
-                    }
+            if (typeof mermaid !== 'undefined') {
+                const mermaidPre = element.querySelector('.mermaid');
+                if (mermaidPre) {
+                    mermaid.init(undefined, mermaidPre);
                 }
-            }, 100);  // Small delay to ensure DOM is updated
+            }
         });
+            })
+            .catch(error => {
+                console.error('Failed to load Mermaid for trace rendering.', error);
+            });
     }
 
     /**
      * Ensure Mermaid.js is loaded
      */
     ensureMermaidLoaded() {
-        if (typeof mermaid !== 'undefined') return;
+        if (typeof mermaid !== 'undefined') {
+            return Promise.resolve(mermaid);
+        }
+        if (this.mermaidReady) {
+            return this.mermaidReady;
+        }
 
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
-        script.onload = () => {
-            mermaid.initialize({ 
-                startOnLoad: true
-            });
-        };
-        document.head.appendChild(script);
+        this.mermaidReady = new Promise((resolve, reject) => {
+            const existing = document.querySelector('script[data-pick-ltl-mermaid="true"]');
+            if (existing) {
+                existing.addEventListener('load', () => resolve(mermaid), { once: true });
+                existing.addEventListener('error', reject, { once: true });
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js';
+            script.dataset.pickLtlMermaid = 'true';
+            script.onload = () => {
+                mermaid.initialize({
+                    startOnLoad: true,
+                    theme: 'neutral',
+                    flowchart: { htmlLabels: true },
+                });
+                resolve(mermaid);
+            };
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+
+        return this.mermaidReady;
     }
 
     /**

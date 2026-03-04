@@ -23,11 +23,61 @@ def _matching_candidates(trace: str, candidates: list[CandidateFormulaState]) ->
     return matches
 
 
+def _reset_candidates(session: SessionState) -> None:
+    for candidate in session.candidate_states:
+        candidate.positive_votes = 0
+        candidate.negative_votes = 0
+        candidate.eliminated = False
+
+
+def _apply_history_item(candidates: list[CandidateFormulaState], item: TraceClassification) -> None:
+    matches = _matching_candidates(item.trace, candidates)
+    item.matching_candidates = matches
+
+    if item.classification == "unsure":
+        return
+
+    for candidate in candidates:
+        does_match = candidate.formula in matches
+        contradiction = (item.classification == "accept" and not does_match) or (
+            item.classification == "reject" and does_match
+        )
+        if contradiction:
+            candidate.negative_votes += 1
+            if candidate.negative_votes >= ELIMINATION_THRESHOLD:
+                candidate.eliminated = True
+        elif item.classification == "accept" and does_match:
+            candidate.positive_votes += 1
+
+
 def _set_result(session: SessionState, title: str, candidate: CandidateFormulaState | None, message: str, mode: str) -> SessionState:
     session.mode = mode
     session.message = message
     session.current_pair = None
     session.final_result = build_final_result(candidate, title=title, message=message)
+    return session
+
+
+def _recalculate_session(session: SessionState) -> SessionState:
+    _reset_candidates(session)
+    session.current_pair = None
+    session.final_result = None
+    session.exhausted = False
+
+    for item in session.history:
+        _apply_history_item(session.candidate_states, item)
+
+    active = session.active_candidates()
+    if len(session.candidate_states) == 1 and session.mode == "single_candidate":
+        candidate = session.candidate_states[0]
+        return _set_result(session, "We could only get this one.", candidate, session.message or "We could only get this one.", "single_candidate")
+    if len(active) == 0:
+        return _set_result(session, "No Candidate Survived", None, "All candidates were eliminated.", "no_result")
+    if len(active) == 1 and active[0].positive_votes >= 1:
+        return _set_result(session, "Final Formula", active[0], "One candidate remains with supporting evidence.", "final_result")
+
+    session.mode = "voting"
+    session.message = ""
     return session
 
 
@@ -67,8 +117,7 @@ def classify_trace(session: SessionState, trace: str, classification: str, sourc
     if classification not in {"accept", "reject", "unsure"}:
         raise ValueError("Classification must be one of: accept, reject, unsure.")
 
-    active = session.active_candidates()
-    matches = _matching_candidates(trace, active)
+    matches = _matching_candidates(trace, session.candidate_states)
     session.history.append(
         TraceClassification(
             trace=trace,
@@ -78,30 +127,18 @@ def classify_trace(session: SessionState, trace: str, classification: str, sourc
             timestamp=int(time.time() * 1000),
         )
     )
+    return _recalculate_session(session)
 
-    if classification != "unsure":
-        for candidate in session.candidate_states:
-            if candidate.eliminated:
-                continue
-            does_match = candidate.formula in matches
-            contradiction = (classification == "accept" and not does_match) or (classification == "reject" and does_match)
-            if contradiction:
-                candidate.negative_votes += 1
-                if candidate.negative_votes >= ELIMINATION_THRESHOLD:
-                    candidate.eliminated = True
-            elif classification == "accept" and does_match:
-                candidate.positive_votes += 1
 
-    session.current_pair = None
-    active = session.active_candidates()
-    if len(active) == 0:
-        return _set_result(session, "No Candidate Survived", None, "All candidates were eliminated.", "no_result")
-    if len(active) == 1 and active[0].positive_votes >= 1:
-        return _set_result(session, "Final Formula", active[0], "One candidate remains with supporting evidence.", "final_result")
-    session.mode = "voting"
-    session.final_result = None
-    session.message = ""
-    return session
+def reclassify_trace(session: SessionState, history_index: int, classification: str) -> SessionState:
+    if classification not in {"accept", "reject", "unsure"}:
+        raise ValueError("Classification must be one of: accept, reject, unsure.")
+    if history_index < 0 or history_index >= len(session.history):
+        raise ValueError("History index is out of bounds.")
+
+    session.history[history_index].classification = classification
+    session.history[history_index].timestamp = int(time.time() * 1000)
+    return _recalculate_session(session)
 
 
 def add_manual_examples(session: SessionState, accept_traces: list[str], reject_traces: list[str]) -> SessionState:

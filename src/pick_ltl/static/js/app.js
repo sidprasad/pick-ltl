@@ -211,6 +211,28 @@ async function submitExamples() {
   }
 }
 
+async function submitReclassification(historyIndex, classification) {
+  if (!appState) {
+    return;
+  }
+  try {
+    setStatus("Recalculating from updated classification...");
+    appState = await api("/api/session/reclassify", {
+      session: appState,
+      history_index: Number(historyIndex),
+      classification,
+    });
+    if (appState.mode === "voting" && !appState.current_pair && !appState.exhausted) {
+      appState = await api("/api/session/next-pair", { session: appState });
+    }
+    persistSession();
+    render();
+    setStatus(appState.message || "Classification updated.");
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+}
+
 async function chooseCandidate(formula) {
   try {
     appState = await api("/api/session/finalize", { session: appState, formula });
@@ -319,6 +341,12 @@ function render() {
     resultSection.classList.remove("hidden");
     renderResult();
   }
+
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => traceRenderer.renderAllTraces());
+  } else {
+    setTimeout(() => traceRenderer.renderAllTraces(), 0);
+  }
 }
 
 function renderAtoms() {
@@ -341,23 +369,25 @@ function renderCandidates() {
   }
   candidateList.className = "candidate-list";
   candidateList.innerHTML = appState.candidate_states.map((candidate) => {
-    const originLabel = candidate.origin.kind === "seed"
-      ? "seed"
-      : candidate.origin.kind === "semantic_mutation"
-        ? "conceptual variant"
-        : "syntactic variant";
     const chooseButton = appState.exhausted && !candidate.eliminated
       ? `<button class="secondary pick-btn" data-formula="${escapeAttr(candidate.formula)}">Pick This One</button>`
+      : "";
+    const notes = candidate.explanation
+      ? `
+        <details class="candidate-notes">
+          <summary>Show Notes</summary>
+          <p class="prose">${escapeHtml(candidate.explanation)}</p>
+        </details>
+      `
       : "";
     return `
       <article class="candidate-item ${candidate.eliminated ? "eliminated" : ""}">
         <div class="candidate-meta">
-          <span class="badge">${originLabel}</span>
           <span class="badge">+${candidate.positive_votes}</span>
           <span class="badge">-${candidate.negative_votes}</span>
         </div>
         <p class="candidate-formula">${escapeHtml(candidate.formula)}</p>
-        <p class="prose">${escapeHtml(candidate.explanation)}</p>
+        ${notes}
         ${chooseButton}
       </article>
     `;
@@ -375,12 +405,27 @@ function renderHistory() {
     return;
   }
   historyList.className = "history-list";
-  historyList.innerHTML = appState.history.map((item) => `
-    <div class="history-item">
-      <strong>${escapeHtml(item.classification)}</strong> · ${escapeHtml(item.source)}
-      <div class="prose">${escapeHtml(item.trace)}</div>
-    </div>
+  historyList.innerHTML = appState.history.map((item, index) => `
+    <article class="history-item">
+      <div class="history-item-head">
+        <div class="history-item-meta">
+          <span class="badge">${escapeHtml(item.source)}</span>
+          <span class="badge">${escapeHtml(item.classification)}</span>
+        </div>
+        <span class="history-item-index">#${index + 1}</span>
+      </div>
+      <div class="history-trace">${renderTrace(item.trace)}</div>
+      <div class="history-actions">
+        <button class="history-vote accept ${item.classification === "accept" ? "active" : ""}" data-history-index="${index}" data-classification="accept">Accept</button>
+        <button class="history-vote reject ${item.classification === "reject" ? "active" : ""}" data-history-index="${index}" data-classification="reject">Reject</button>
+        <button class="history-vote unsure ${item.classification === "unsure" ? "active" : ""}" data-history-index="${index}" data-classification="unsure">Unsure</button>
+      </div>
+    </article>
   `).join("");
+
+  historyList.querySelectorAll(".history-vote").forEach((button) => {
+    button.addEventListener("click", () => submitReclassification(button.dataset.historyIndex, button.dataset.classification));
+  });
 }
 
 function renderPair() {
@@ -412,8 +457,12 @@ function renderResult() {
   document.getElementById("resultTitle").textContent = result.title || "Result";
   document.getElementById("resultFormula").textContent = result.formula || "No final formula";
   document.getElementById("resultMessage").textContent = result.message || appState.message || "";
-  document.getElementById("resultExplanation").textContent = result.explanation || "";
-  document.getElementById("resultEnglish").textContent = result.english || "No English gloss available.";
+  document.getElementById("resultExplanation").innerHTML = result.explanation
+    ? `<details class="result-notes"><summary>Show Notes</summary><p class="prose">${escapeHtml(result.explanation)}</p></details>`
+    : '<p class="prose">No notes available.</p>';
+  document.getElementById("resultEnglish").innerHTML = result.english
+    ? `<details class="result-notes"><summary>Show English Gloss</summary><p class="prose">${escapeHtml(result.english)}</p></details>`
+    : '<p class="prose">No English gloss available.</p>';
   document.getElementById("resultIn").innerHTML = renderExampleList(result.examples_in);
   document.getElementById("resultOut").innerHTML = renderExampleList(result.examples_out);
 }
@@ -433,32 +482,11 @@ function renderBadges(items) {
 }
 
 function renderTrace(trace) {
-  const parsed = traceRenderer.parseTrace(trace);
-  const prefix = parsed.prefix.map((state) => renderState(state.raw));
-  const cycle = parsed.cycle.map((state) => renderState(state.raw));
-  const bits = [];
-  prefix.forEach((item, index) => {
-    if (index > 0) bits.push('<span class="trace-arrow">→</span>');
-    bits.push(item);
-  });
-  if (cycle.length) {
-    if (prefix.length) bits.push('<span class="trace-arrow">→</span>');
-    bits.push('<span class="trace-cycle-label">cycle</span>');
-    cycle.forEach((item, index) => {
-      if (index > 0) bits.push('<span class="trace-arrow">↺</span>');
-      bits.push(item);
-    });
-  }
-  return `<div class="trace-flow">${bits.join("")}</div>`;
-}
-
-function renderState(raw) {
-  const text = raw === "1"
-    ? "⊤"
-    : raw === "0"
-      ? "⊥"
-      : raw.replaceAll("&", " ∧ ").replaceAll("!", "¬");
-  return `<span class="trace-state">${escapeHtml(text)}</span>`;
+  return `
+    <div class="ltl-spot-trace trace-render-surface" data-word="${escapeAttr(trace)}">
+      <div class="trace-fallback">${escapeHtml(trace)}</div>
+    </div>
+  `;
 }
 
 function shortFormula(formula) {
