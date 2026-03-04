@@ -33,8 +33,6 @@
             </div>
             <div class="inline-actions">
               <button id="generateBtn" class="primary">Generate</button>
-              <button id="refineBtn" class="secondary" disabled>Refine</button>
-              <button id="restartBtn" class="secondary" disabled>Restart</button>
             </div>
           </div>
 
@@ -51,7 +49,13 @@
           </div>
 
           <div id="workspaceSection" class="workspace hidden">
-            <div id="currentPrompt" class="pill"></div>
+            <div class="panel-head tight workspace-head">
+              <div id="currentPrompt" class="pill"></div>
+              <div class="inline-actions">
+                <button id="refineBtn" class="secondary" disabled>Refine</button>
+                <button id="startFreshBtn" class="secondary">Build a New Formula</button>
+              </div>
+            </div>
 
             <div id="pairSection" class="pair-grid hidden">
               <article class="trace-card">
@@ -105,6 +109,10 @@
               <p id="resultTitle" class="eyebrow"></p>
               <h2 id="resultFormula">No formula selected</h2>
               <p id="resultMessage" class="lede compact"></p>
+              <div class="inline-actions">
+                <button id="resultRefineBtn" class="secondary" disabled>Refine</button>
+                <button id="resultStartFreshBtn" class="secondary">Build a New Formula</button>
+              </div>
             </div>
             <div class="result-grid">
               <div class="manual-panel">

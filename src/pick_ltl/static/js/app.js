@@ -26,7 +26,9 @@ async function init() {
 function bindEvents() {
   document.getElementById("generateBtn").addEventListener("click", generateSession);
   document.getElementById("refineBtn").addEventListener("click", refineSession);
-  document.getElementById("restartBtn").addEventListener("click", resetSession);
+  document.getElementById("resultRefineBtn").addEventListener("click", refineSession);
+  document.getElementById("startFreshBtn").addEventListener("click", resetSession);
+  document.getElementById("resultStartFreshBtn").addEventListener("click", resetSession);
   document.getElementById("submitExamplesBtn").addEventListener("click", submitExamples);
   document.getElementById("openSettingsBtn").addEventListener("click", () => toggleSettings(true));
   document.getElementById("closeSettingsBtn").addEventListener("click", () => toggleSettings(false));
@@ -314,7 +316,7 @@ function rememberPrompt(prompt) {
 function render() {
   const hasSession = Boolean(appState);
   document.getElementById("refineBtn").disabled = !hasSession;
-  document.getElementById("restartBtn").disabled = !hasSession;
+  document.getElementById("resultRefineBtn").disabled = !hasSession;
 
   renderAtoms();
   renderCandidates();

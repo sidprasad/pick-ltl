@@ -347,6 +347,14 @@ button:disabled {
   width: fit-content;
 }
 
+.workspace-head {
+  align-items: flex-start;
+}
+
+.result-head .inline-actions {
+  margin-top: 14px;
+}
+
 .pair-grid,
 .manual-grid,
 .result-grid,
