@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -60,6 +61,9 @@ class LLMProvider(abc.ABC):
             text = parts[-1].strip()
             if text.lower().startswith("json"):
                 text = text[4:].strip()
+        json_match = re.search(r"\{[\s\S]*\}", text)
+        if json_match:
+            text = json_match.group(0)
         try:
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
@@ -67,4 +71,3 @@ class LLMProvider(abc.ABC):
         if not isinstance(payload, dict):
             raise ProviderError("Model returned JSON, but not a JSON object.")
         return payload
-
