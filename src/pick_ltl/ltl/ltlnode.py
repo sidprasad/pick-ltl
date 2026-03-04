@@ -2,6 +2,7 @@
 
 import random
 from antlr4 import CommonTokenStream, InputStream, ParseTreeWalker
+from antlr4.error.ErrorListener import ErrorListener
 from abc import ABC, abstractmethod
 
 from .ltlLexer import ltlLexer
@@ -78,6 +79,19 @@ class LTLNode(ABC):
     @staticmethod
     def equiv(formula1, formula2):
         return areEquivalent(formula1, formula2)
+
+
+class LTLParseError(ValueError):
+    pass
+
+
+class _CollectingErrorListener(ErrorListener):
+    def __init__(self):
+        super().__init__()
+        self.errors = []
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        self.errors.append(f"line {line}:{column} {msg}")
 
 class ltlListenerImpl(ltlListener) :
     def __init__(self):
@@ -456,25 +470,44 @@ class EquivalenceNode(BinaryOperatorNode):
 
 
 def parse_ltl_string(s):
+    formula = str(s).strip()
+    if not formula:
+        raise LTLParseError("Formula cannot be empty.")
+
     # Create an input stream from the string
-    input_stream = InputStream(s)
+    input_stream = InputStream(formula)
 
     # Create a lexer and a token stream
     lexer = ltlLexer(input_stream)
+    lexer_errors = _CollectingErrorListener()
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(lexer_errors)
     token_stream = CommonTokenStream(lexer)
 
     # Create the parser and parse the input
     parser = ltlParser(token_stream)
+    parser_errors = _CollectingErrorListener()
+    parser.removeErrorListeners()
+    parser.addErrorListener(parser_errors)
     tree = parser.ltl()
+
+    if lexer_errors.errors or parser_errors.errors:
+        errors = lexer_errors.errors + parser_errors.errors
+        raise LTLParseError(f"Invalid LTL formula '{formula}': {'; '.join(errors)}")
 
     # Create a listener
     listener = ltlListenerImpl()
 
     # Create a ParseTreeWalker and walk the parse tree with the listener
     walker = ParseTreeWalker()
-    walker.walk(listener, tree)
+    try:
+        walker.walk(listener, tree)
+    except IndexError as exc:
+        raise LTLParseError(f"Invalid LTL formula '{formula}'.") from exc
 
     # Get the root of the syntax tree
+    if len(listener.stack) != 1:
+        raise LTLParseError(f"Invalid LTL formula '{formula}'.")
     root = listener.getRootFormula()
 
     return root

@@ -9,6 +9,7 @@ from ..api.schemas import ApiError, json_error, normalize_provider_payload, requ
 from ..config import load_settings, save_settings
 from ..llm.base import ProviderError
 from ..llm.manager import build_provider
+from ..ltl.ltlnode import LTLParseError
 from ..services.candidate_builder import create_initial_session
 from ..services.seed_generation import generate_seed_formula
 from ..session.engine import add_manual_examples, finalize_session, next_pair, classify_trace, refine_session
@@ -134,6 +135,11 @@ def handle_api_error(error: ApiError):
 
 @bp.errorhandler(ProviderError)
 def handle_provider_error(error: ProviderError):
+    return json_error(str(error), status_code=400)
+
+
+@bp.errorhandler(LTLParseError)
+def handle_ltl_parse_error(error: LTLParseError):
     return json_error(str(error), status_code=400)
 
 
