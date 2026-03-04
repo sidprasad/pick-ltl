@@ -177,6 +177,81 @@ npm run test:e2e:headed
 npm run test:e2e:ui
 ```
 
+## Docker
+
+If you want to run `pick-ltl` in containers, the repo includes:
+
+- [Dockerfile](/Users/siddharthaprasad/Desktop/ltl/pick-ltl/Dockerfile) for the app
+- [compose.yaml](/Users/siddharthaprasad/Desktop/ltl/pick-ltl/compose.yaml) for `pick-ltl` + Ollama
+- [settings.json](/Users/siddharthaprasad/Desktop/ltl/pick-ltl/docker/pick-ltl-config/settings.json) as the mounted app settings file
+
+### What the Docker setup does
+
+- builds a `pick-ltl` app image with Python 3.12 and `spot`
+- runs the Flask app behind `gunicorn` on port `5000`
+- runs an `ollama` container on port `11434`
+- mounts a config directory so provider settings persist
+
+The mounted settings file is preconfigured to use:
+
+- Provider: `Ollama`
+- Base URL: `http://ollama:11434`
+- Model: `llama3.2:latest`
+
+### Start the stack
+
+From the repo root:
+
+```bash
+docker compose up --build
+```
+
+Then open [http://127.0.0.1:5000](http://127.0.0.1:5000).
+
+### Pull a model into the Ollama container
+
+The Compose stack starts Ollama, but it does not automatically download a model. Pull one explicitly:
+
+```bash
+docker compose exec ollama ollama pull llama3.2:latest
+```
+
+If you want a different model, either:
+
+- pull that model instead, or
+- edit [settings.json](/Users/siddharthaprasad/Desktop/ltl/pick-ltl/docker/pick-ltl-config/settings.json) before starting the stack
+
+### Persistent data
+
+- Ollama model data is stored in the named Docker volume `ollama-data`
+- `pick-ltl` settings are stored in the bind mount [docker/pick-ltl-config](/Users/siddharthaprasad/Desktop/ltl/pick-ltl/docker/pick-ltl-config)
+
+### Use another model server
+
+If you want `pick-ltl` to talk to a different container or an external model server instead of the bundled Ollama service:
+
+1. Edit [settings.json](/Users/siddharthaprasad/Desktop/ltl/pick-ltl/docker/pick-ltl-config/settings.json)
+2. Change `kind`, `base_url`, and `model`
+3. Restart the app container:
+
+```bash
+docker compose up --build pick-ltl
+```
+
+For example, to talk to a host-local Ollama instead of the Compose Ollama container, set the base URL accordingly for your Docker host setup.
+
+### Stop the stack
+
+```bash
+docker compose down
+```
+
+To remove the Ollama model volume too:
+
+```bash
+docker compose down -v
+```
+
 ## Notes
 
 - Session state lives in the browser and can be exported/imported as JSON.
