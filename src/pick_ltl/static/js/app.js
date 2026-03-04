@@ -3,7 +3,6 @@ const PROMPTS_STORAGE_KEY = "pick-ltl-prompts";
 
 let appState = null;
 let settings = null;
-const traceRenderer = new TraceRenderer();
 
 const statusBar = document.getElementById("statusBar");
 const promptInput = document.getElementById("promptInput");
@@ -342,11 +341,6 @@ function render() {
     renderResult();
   }
 
-  if (typeof requestAnimationFrame === "function") {
-    requestAnimationFrame(() => traceRenderer.renderAllTraces());
-  } else {
-    setTimeout(() => traceRenderer.renderAllTraces(), 0);
-  }
 }
 
 function renderAtoms() {
@@ -420,18 +414,11 @@ function renderHistory() {
   historyList.className = "history-list";
   historyList.innerHTML = appState.history.map((item, index) => `
     <article class="history-item">
-      <div class="history-item-head">
-        <div class="history-item-meta">
-          <span class="badge">${escapeHtml(item.source)}</span>
-          <span class="badge">${escapeHtml(item.classification)}</span>
-        </div>
-        <span class="history-item-index">#${index + 1}</span>
-      </div>
       <div class="history-trace">${renderTrace(item.trace)}</div>
       <div class="history-actions">
-        <button class="history-vote accept ${item.classification === "accept" ? "active" : ""}" data-history-index="${index}" data-classification="accept">Accept</button>
-        <button class="history-vote reject ${item.classification === "reject" ? "active" : ""}" data-history-index="${index}" data-classification="reject">Reject</button>
-        <button class="history-vote unsure ${item.classification === "unsure" ? "active" : ""}" data-history-index="${index}" data-classification="unsure">Unsure</button>
+        <button class="history-vote accept ${item.classification === "accept" ? "active" : ""}" data-history-index="${index}" data-classification="accept" aria-pressed="${item.classification === "accept" ? "true" : "false"}">Accept</button>
+        <button class="history-vote reject ${item.classification === "reject" ? "active" : ""}" data-history-index="${index}" data-classification="reject" aria-pressed="${item.classification === "reject" ? "true" : "false"}">Reject</button>
+        <button class="history-vote unsure ${item.classification === "unsure" ? "active" : ""}" data-history-index="${index}" data-classification="unsure" aria-pressed="${item.classification === "unsure" ? "true" : "false"}">Unsure</button>
       </div>
     </article>
   `).join("");
@@ -453,8 +440,8 @@ function renderPair() {
 
   document.getElementById("traceA").innerHTML = renderTrace(appState.current_pair.trace1);
   document.getElementById("traceB").innerHTML = renderTrace(appState.current_pair.trace2);
-  document.getElementById("traceAMatches").innerHTML = renderBadges(appState.current_pair.matches1);
-  document.getElementById("traceBMatches").innerHTML = renderBadges(appState.current_pair.matches2);
+  document.getElementById("traceAMatches").innerHTML = renderMatchDetails(appState.current_pair.matches1);
+  document.getElementById("traceBMatches").innerHTML = renderMatchDetails(appState.current_pair.matches2);
 }
 
 function renderResult() {
@@ -494,12 +481,19 @@ function renderBadges(items) {
   return items.map((formula) => `<span class="badge">${escapeHtml(shortFormula(formula))}</span>`).join("");
 }
 
-function renderTrace(trace) {
+function renderMatchDetails(items) {
+  const count = items?.length || 0;
+  const label = count ? `Show matching formulas (${count})` : "Show matching formulas";
   return `
-    <div class="ltl-spot-trace trace-render-surface" data-word="${escapeAttr(trace)}">
-      <div class="trace-fallback">${escapeHtml(trace)}</div>
-    </div>
+    <details class="match-details">
+      <summary>${escapeHtml(label)}</summary>
+      <div class="badge-row">${renderBadges(items)}</div>
+    </details>
   `;
+}
+
+function renderTrace(trace) {
+  return `<pre class="trace-string">${escapeHtml(trace)}</pre>`;
 }
 
 function shortFormula(formula) {
