@@ -86,15 +86,16 @@ def test_refine_session_replays_history(monkeypatch):
     replayed = []
 
     monkeypatch.setattr(
-        "pick_ltl.session.engine.generate_seed_formula",
-        lambda prompt, provider: SeedFormulaResult(formula="G(r)", explanation=f"seed:{prompt}"),
+        "pick_ltl.session.engine.generate_seed_formulas",
+        lambda prompt, provider: [SeedFormulaResult(formula="G(r)", explanation=f"seed:{prompt}")],
     )
     monkeypatch.setattr(
         "pick_ltl.session.engine.create_initial_session",
-        lambda prompt, provider, seed: SessionState(
+        lambda prompt, provider, seeds: SessionState(
             prompt=prompt,
             provider=provider,
-            seed=seed,
+            seed=seeds[0],
+            seeds=seeds,
             candidate_states=[
                 CandidateFormulaState(
                     formula="G(r)",
@@ -107,8 +108,8 @@ def test_refine_session_replays_history(monkeypatch):
     )
 
     def fake_classify(session, trace, classification, source="pair"):
-      replayed.append((trace, classification, source))
-      return session
+        replayed.append((trace, classification, source))
+        return session
 
     monkeypatch.setattr("pick_ltl.session.engine.classify_trace", fake_classify)
 

@@ -4,7 +4,7 @@ import time
 
 from ..ltl.spotutils import generate_two_distinguishing_words, is_trace_satisfied
 from ..services.final_result import build_final_result
-from ..services.seed_generation import generate_seed_formula
+from ..services.seed_generation import generate_seed_formulas
 from ..services.candidate_builder import create_initial_session
 from .models import CandidateFormulaState, SessionState, TraceClassification, TracePair
 
@@ -44,7 +44,8 @@ def _apply_history_item(candidates: list[CandidateFormulaState], item: TraceClas
         )
         if contradiction:
             candidate.negative_votes += 1
-            if candidate.negative_votes >= ELIMINATION_THRESHOLD:
+            threshold = candidate.elimination_threshold or ELIMINATION_THRESHOLD
+            if candidate.negative_votes >= threshold:
                 candidate.eliminated = True
         elif item.classification == "accept" and does_match:
             candidate.positive_votes += 1
@@ -160,8 +161,8 @@ def finalize_session(session: SessionState, formula: str | None = None) -> Sessi
 
 
 def refine_session(session: SessionState, new_prompt: str) -> SessionState:
-    seed = generate_seed_formula(new_prompt, session.provider)
-    refined = create_initial_session(new_prompt, session.provider, seed)
+    seeds = generate_seed_formulas(new_prompt, session.provider)
+    refined = create_initial_session(new_prompt, session.provider, seeds)
     for item in session.history:
         refined = classify_trace(refined, item.trace, item.classification, source=item.source)
     return refined

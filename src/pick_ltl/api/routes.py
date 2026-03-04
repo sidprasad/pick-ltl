@@ -11,7 +11,7 @@ from ..llm.base import ProviderError
 from ..llm.manager import build_provider
 from ..ltl.ltlnode import LTLParseError
 from ..services.candidate_builder import create_initial_session
-from ..services.seed_generation import generate_seed_formula
+from ..services.seed_generation import generate_seed_formulas
 from ..session.engine import add_manual_examples, finalize_session, next_pair, classify_trace, refine_session, reclassify_trace
 from ..session.storage import normalize_session_payload
 
@@ -58,8 +58,11 @@ def generate_seed():
     payload = require_json()
     prompt = str(payload.get("prompt", "")).strip()
     provider = normalize_provider_payload(payload.get("provider", {}) if isinstance(payload.get("provider"), dict) else load_settings())
-    seed = generate_seed_formula(prompt, provider)
-    return jsonify(seed.to_dict())
+    seeds = generate_seed_formulas(prompt, provider)
+    primary_seed = seeds[0]
+    response = primary_seed.to_dict()
+    response["seeds"] = [seed.to_dict() for seed in seeds]
+    return jsonify(response)
 
 
 @bp.route("/api/candidates/build", methods=["POST"])
@@ -67,15 +70,21 @@ def build_candidates():
     payload = require_json()
     prompt = str(payload.get("prompt", "")).strip()
     provider = normalize_provider_payload(payload.get("provider", {}) if isinstance(payload.get("provider"), dict) else load_settings())
-    seed_payload = payload.get("seed")
-    if not isinstance(seed_payload, dict):
-        raise ApiError("Expected a seed payload.")
-    seed = generate_seed_formula(prompt, provider) if payload.get("regenerate_seed") else None
-    if seed is None:
+    seeds_payload = payload.get("seeds")
+    if payload.get("regenerate_seed"):
+        seeds = generate_seed_formulas(prompt, provider)
+    elif isinstance(seeds_payload, list):
         from ..session.models import SeedFormulaResult
 
-        seed = SeedFormulaResult.from_dict(seed_payload)
-    session = create_initial_session(prompt, provider, seed)
+        seeds = [SeedFormulaResult.from_dict(item) for item in seeds_payload if isinstance(item, dict)]
+    else:
+        seed_payload = payload.get("seed")
+        if not isinstance(seed_payload, dict):
+            raise ApiError("Expected a seed payload.")
+        from ..session.models import SeedFormulaResult
+
+        seeds = [SeedFormulaResult.from_dict(seed_payload)]
+    session = create_initial_session(prompt, provider, seeds)
     return jsonify(session.to_dict())
 
 

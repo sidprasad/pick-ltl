@@ -2,10 +2,10 @@
 
 PICK LTL is a local Python web app for building Linear Temporal Logic formulas with a PICK-style loop:
 
-1. Ask an LLM for one seed formula.
+1. Ask an LLM for two initial formulas that share one atom glossary.
 2. Derive alternative candidates locally using misconception and syntactic mutation.
 3. Distinguish candidates by classifying traces.
-4. Stop when one candidate survives, or when the app can only confidently offer a single seed-derived interpretation.
+4. Stop when one candidate survives, or when the app can only confidently offer a single interpretation.
 
 ## Getting Started
 

@@ -134,11 +134,11 @@ async function generateSession() {
   }
 
   try {
-    setStatus("Generating seed formula...");
+    setStatus("Generating initial formulas...");
     const provider = currentProvider();
     const seed = await api("/api/seed/generate", { prompt, provider });
     setStatus("Building candidate set...");
-    appState = await api("/api/candidates/build", { prompt, provider, seed });
+    appState = await api("/api/candidates/build", { prompt, provider, seeds: seed.seeds || [seed] });
     rememberPrompt(prompt);
     if (appState.mode === "voting") {
       appState = await api("/api/session/next-pair", { session: appState });
@@ -350,13 +350,26 @@ function render() {
 }
 
 function renderAtoms() {
-  if (!appState?.seed?.atoms?.length) {
+  const seeds = appState?.seeds?.length ? appState.seeds : (appState?.seed ? [appState.seed] : []);
+  const atoms = [];
+  const seen = new Set();
+  seeds.forEach((seed) => {
+    (seed.atoms || []).forEach((atom) => {
+      if (seen.has(atom.name)) {
+        return;
+      }
+      seen.add(atom.name);
+      atoms.push(atom);
+    });
+  });
+
+  if (!atoms.length) {
     atomsList.className = "atoms-list empty";
     atomsList.textContent = "No formula yet.";
     return;
   }
   atomsList.className = "atoms-list";
-  atomsList.innerHTML = appState.seed.atoms
+  atomsList.innerHTML = atoms
     .map((atom) => `<div class="atom-item"><strong>${escapeHtml(atom.name)}</strong>: ${escapeHtml(atom.meaning)}</div>`)
     .join("");
 }

@@ -5,13 +5,11 @@ from pick_ltl.session.models import SeedFormulaResult, SessionState
 
 def test_seed_route_with_mocked_generator(monkeypatch):
     monkeypatch.setattr(
-        "pick_ltl.api.routes.generate_seed_formula",
-        lambda prompt, provider: SeedFormulaResult(
-            formula="G(r)",
-            explanation="seed",
-            warnings=[],
-            atoms=[],
-        ),
+        "pick_ltl.api.routes.generate_seed_formulas",
+        lambda prompt, provider: [
+            SeedFormulaResult(formula="G(r)", explanation="seed", warnings=[], atoms=[]),
+            SeedFormulaResult(formula="F(r)", explanation="alt", warnings=[], atoms=[]),
+        ],
     )
 
     app = create_app()
@@ -19,15 +17,17 @@ def test_seed_route_with_mocked_generator(monkeypatch):
     response = client.post("/api/seed/generate", json={"prompt": "always r", "provider": {"kind": "ollama"}})
     assert response.status_code == 200
     assert response.get_json()["formula"] == "G(r)"
+    assert len(response.get_json()["seeds"]) == 2
 
 
 def test_build_candidates_route_can_return_single_candidate(monkeypatch):
     monkeypatch.setattr(
         "pick_ltl.api.routes.create_initial_session",
-        lambda prompt, provider, seed: SessionState(
+        lambda prompt, provider, seeds: SessionState(
             prompt=prompt,
             provider=provider,
-            seed=seed,
+            seed=seeds[0] if seeds else None,
+            seeds=seeds,
             mode="single_candidate",
             message="We could only get this one.",
         ),
@@ -40,7 +40,10 @@ def test_build_candidates_route_can_return_single_candidate(monkeypatch):
         json={
             "prompt": "always r",
             "provider": {"kind": "ollama"},
-            "seed": {"formula": "G(r)", "explanation": "seed", "atoms": [], "warnings": []},
+            "seeds": [
+                {"formula": "G(r)", "explanation": "seed", "atoms": [], "warnings": []},
+                {"formula": "F(r)", "explanation": "alt", "atoms": [], "warnings": []},
+            ],
         },
     )
     assert response.status_code == 200
@@ -49,7 +52,7 @@ def test_build_candidates_route_can_return_single_candidate(monkeypatch):
 
 def test_seed_route_returns_400_for_invalid_model_formula(monkeypatch):
     monkeypatch.setattr(
-        "pick_ltl.api.routes.generate_seed_formula",
+        "pick_ltl.api.routes.generate_seed_formulas",
         lambda prompt, provider: (_ for _ in ()).throw(ProviderError("Model returned an invalid LTL formula.")),
     )
 

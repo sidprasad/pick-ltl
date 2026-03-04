@@ -64,6 +64,7 @@ class CandidateFormulaState:
     equivalents: list[str] = field(default_factory=list)
     positive_votes: int = 0
     negative_votes: int = 0
+    elimination_threshold: int = 2
     eliminated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
@@ -75,6 +76,7 @@ class CandidateFormulaState:
             "equivalents": list(self.equivalents),
             "positive_votes": self.positive_votes,
             "negative_votes": self.negative_votes,
+            "elimination_threshold": self.elimination_threshold,
             "eliminated": self.eliminated,
         }
 
@@ -88,6 +90,7 @@ class CandidateFormulaState:
             equivalents=[str(item) for item in data.get("equivalents", [])],
             positive_votes=int(data.get("positive_votes", 0) or 0),
             negative_votes=int(data.get("negative_votes", 0) or 0),
+            elimination_threshold=int(data.get("elimination_threshold", 2) or 2),
             eliminated=bool(data.get("eliminated", False)),
         )
 
@@ -185,6 +188,7 @@ class SessionState:
     prompt: str = ""
     provider: dict[str, Any] = field(default_factory=dict)
     seed: SeedFormulaResult | None = None
+    seeds: list[SeedFormulaResult] = field(default_factory=list)
     candidate_states: list[CandidateFormulaState] = field(default_factory=list)
     history: list[TraceClassification] = field(default_factory=list)
     mode: str = "prompt"
@@ -203,6 +207,7 @@ class SessionState:
             "prompt": self.prompt,
             "provider": dict(self.provider),
             "seed": self.seed.to_dict() if self.seed else None,
+            "seeds": [seed.to_dict() for seed in self.seeds],
             "candidate_states": [candidate.to_dict() for candidate in self.candidate_states],
             "history": [item.to_dict() for item in self.history],
             "mode": self.mode,
@@ -216,13 +221,17 @@ class SessionState:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SessionState":
         seed = data.get("seed")
+        seeds = data.get("seeds", [])
         pair = data.get("current_pair")
         result = data.get("final_result")
+        parsed_seeds = [SeedFormulaResult.from_dict(item) for item in seeds if isinstance(item, dict)]
+        parsed_seed = SeedFormulaResult.from_dict(seed) if isinstance(seed, dict) else (parsed_seeds[0] if parsed_seeds else None)
         return cls(
             version=int(data.get("version", 1) or 1),
             prompt=str(data.get("prompt", "")),
             provider=data.get("provider", {}) if isinstance(data.get("provider"), dict) else {},
-            seed=SeedFormulaResult.from_dict(seed) if isinstance(seed, dict) else None,
+            seed=parsed_seed,
+            seeds=parsed_seeds if parsed_seeds else ([parsed_seed] if parsed_seed else []),
             candidate_states=[
                 CandidateFormulaState.from_dict(item)
                 for item in data.get("candidate_states", [])
@@ -236,4 +245,3 @@ class SessionState:
             exhausted=bool(data.get("exhausted", False)),
             message=str(data.get("message", "")),
         )
-

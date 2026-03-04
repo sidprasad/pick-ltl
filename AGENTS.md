@@ -3,7 +3,7 @@
 ## Repo Overview
 
 - `pick-ltl` is a local Flask app with a vanilla JS frontend.
-- The product contract is: one LLM seed formula, then local candidate generation via misconception mutation and syntactic fallback.
+- The product contract is: two LLM-proposed initial formulas with a shared atom glossary, then local candidate generation via misconception mutation and syntactic fallback.
 - Do not change the architecture to ask the LLM for multiple candidates unless explicitly requested.
 
 ## Setup
@@ -23,7 +23,7 @@
 - Keep misconception codes internal. The UI should show user-friendly explanations, not internal labels.
 - If mutation yields exactly one viable candidate, preserve the single-candidate fallback state and the text `We could only get this one.`
 - Distinguishing traces are generated locally with Spot. Do not replace that with LLM-generated traces.
-- The visible UI currently uses the custom trace renderer in `src/pick_ltl/static/js/app.js`, not Mermaid diagrams.
+- The visible UI now renders traces through the Mermaid-based renderer in `src/pick_ltl/static/js/trace-renderer.js`.
 
 ## Editing Guidance
 
