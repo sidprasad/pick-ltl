@@ -39,6 +39,16 @@ Rules:
 - Use only short proposition names.
 - Use ASCII LTL syntax, not LaTeX.
 - Use lowercase proposition names like r, b, p1.
+- Expected syntax:
+  - unary operators: G, F, X, !
+  - binary operators: U, &, |, ->
+  - grouping: parentheses ()
+  - propositions: lowercase letters/digits only, like r, b, p1
+- Example valid formulas:
+  - G(r -> F(b))
+  - G(req -> F(grant))
+  - X(p1)
+  - (r U g)
 - Do not use backslashes anywhere in the formula.
 - Do not escape operators or parentheses.
 - Valid example formula: G(r -> F(b))
